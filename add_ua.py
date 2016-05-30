@@ -8,7 +8,7 @@ import socket
 from sys import argv
 from os import popen as bash
 
-URL = "http://jump.t.nxin.com/"
+URL = "http://jumpserver.public.yz/"
 
 
 # requests = requests.session()
@@ -50,23 +50,35 @@ class JumpServer(object):
 
     def get_assetgroups_list(self):
         '''get all groups'''
-        url = URL + 'jasset/group/list/'
-
+        ##非api处理方式
+        # url = URL + 'jasset/group/list/'
+        #
+        # rs = requests.get(url, cookies=self.get_cookie())
+        # # list页面组名后面有个空格，主机数量质量的没有
+        # return re.compile('<a href="/jasset/asset/list/\?group_id=(\d)">(\w+) </a>').findall(rs.text)
+        #api处理方式
+        url = URL + 'api/group/list/'
         rs = requests.get(url, cookies=self.get_cookie())
-        # list页面组名后面有个空格，主机数量质量的没有
-        return re.compile('<a href="/jasset/asset/list/\?group_id=(\d)">(\w+) </a>').findall(rs.text)
+        return rs.text
 
     def get_role_id(self, jperm_name):
         '''get role's id '''
-        url = URL + 'jperm/role/list/'
+        ##非api处理方式
+        # url = URL + 'jperm/role/list/'
+        # rs = requests.get(url, cookies=self.get_cookie())
+        #
+        # try:
+        #     ###get role's id by role name
+        #     return re.compile('<a href="/jperm/role/detail/\?id=(.*)">{0}'.format(jperm_name)).findall(rs.text)[0]
+        #
+        # except IndexError:
+        #     assert 'jump server have no asset user {0}, add it if needed'.format(jperm_name)
+        #api处理方式
+        url = URL + 'api/role/list/'
         rs = requests.get(url, cookies=self.get_cookie())
-
-        try:
-            ###get role's id by role name
-            return re.compile('<a href="/jperm/role/detail/\?id=(.*)">{0}'.format(jperm_name)).findall(rs.text)[0]
-
-        except IndexError:
-            assert 'jump server have no asset user {0}, add it if needed'.format(jperm_name)
+        for role_dict in json.loads(rs.text):
+            if role_dict['name'] == jperm_name:
+                return role_dict['id']
 
     def asset_add_user(self, role_name, role_password, role_key=None, role_comment=None):
         '''add role user if need'''
@@ -105,21 +117,29 @@ class JumpServer(object):
 
 
 def main():
-    js = JumpServer("liuniansheng", "")
-    gl = js.get_assetgroups_list()
-    group_dict = collections.OrderedDict()
-    for g in gl:
-        group_dict[g[0]] = g[1]
-
+    js = JumpServer("", "")
+    ###非api处理方式
+    # gl = js.get_assetgroups_list()
+    # group_dict = collections.OrderedDict()
+    # for g in gl:
+    #     group_dict[g[0]] = g[1]
     ##帮助文档
+    # def help_usage():
+    #     print 'number for group list:\n'
+    #     for k, v in group_dict.items():
+    #         ###中文名字要转码
+    #         print 'num {0} for group {1}'.format(k, v.encode("utf-8"))
+    #
+    #     print '\nusage : argv1 is int number of group, argv2 is str password for root of localhost'
+    ##api处理方式
+    gl = json.loads(js.get_assetgroups_list())
+
     def help_usage():
         print 'number for group list:\n'
-        for k, v in group_dict.items():
-            ###中文名字要转码
-            print 'num {0} for group {1}'.format(k, v.encode("utf-8"))
-
+        for group_dict in gl:
+            print 'num {0} for group {1}'.format(group_dict['id'], group_dict['name'])
         print '\nusage : argv1 is int number of group, argv2 is str password for root of localhost'
-        #
+
 
     host = socket.gethostname()
     user = 'root'
